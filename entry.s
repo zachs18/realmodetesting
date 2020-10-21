@@ -1,6 +1,8 @@
 # https://stackoverflow.com/a/5268120/5142683
 
+	.section ".boot_entry","a"
 	.code16
+	.globl	_start
 _start:
 	mov	$0x8000,%sp
 	xor	%ax,%ax
@@ -26,6 +28,13 @@ end_print_loop:
 end:
 	jmp	end
 
+	.section ".rodata","a"
+msg:
+	.string "Hello, World!\r\n"
+
+
+	.section ".boot_text", "a"
+	.globl	print_uint16
 print_uint16:
 	# takes unsigned short in %ax and prints it
 	# clobbers %dx, %cx
@@ -54,6 +63,8 @@ print_uint16:
 0:
 	ret
 
+	.section ".boot_text", "a"
+	.globl	print_newline
 print_newline:
 	mov	$0x0E00+'\r',%ax
 	int	$0x10
@@ -61,6 +72,9 @@ print_newline:
 	int	$0x10
 	ret
 
+
+	.section ".boot_text", "a"
+	.globl	keyboard_handler
 keyboard_handler:
 # http://inglorion.net/documents/tutorials/x86ostut/keyboard/
 	pusha # push all registers
@@ -101,48 +115,5 @@ keyboard_handler:
 	popa
 	iret
 
-keymap:
-# http://inglorion.net/documents/tutorials/x86ostut/keyboard/us_keymap.inc
-	.ascii	"\x00\x1b", "1234567890-=\x08\x09" # GNU AS interprets \x1b123456789 all as one char
-	.ascii	"qwertyuiop[]\r\x00", "as"
-	.ascii	"dfghjkl;'`\x00\\zxcvb" # LShift is \x00
-	.ascii	"nm,./\x00*\x00 "
-//	.zero 7
-//	.zero 64
 
-//	.ascii	"0123456789abcdef"
-//	.ascii	"ghijklmnopqrstuv"
-//	.ascii	"wxyzABCDEFGHIJKL"
-//	.ascii	"MNOPQRSTUVWXYZ,."
-//	.ascii	"~!@#$%^&*()_+-=`"
-//	.ascii	"[]{}\|;:'\"<>?/  "
-/*
-	0:
-	1: Escape
-	2-10: 1-9
-	11: 0
-	12: -
-	13: =
-	14: Backspace
-	15: Tab
-
-	16-27: qwertyuiop[]
-	28: Return (and Keypad Return)
-	29: Ctrl
-	30-40: asdfghjkl;'
-	41: `
-	42: LShift
-	43: \
-
-	44-53: zxcvbnm,./ (53 is also Keypad /)
-	54: RShift
-	55: (Keypad) *
-	56: Alt
-	57: Space
-	58: Caps Lock
-	
-
-*/
-msg:
-	.string "Hello, World!\r\n"
 

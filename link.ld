@@ -1,8 +1,16 @@
 SECTIONS {
 	. = 0x7C00;
-	.text : {
-		* (.text.entry);
-		* (.text);
+	.boot_text : {
+		* (.boot_entry);
+		* (.boot_text);
+	}
+
+	.boot_data : {
+		* (.boot_data);
+	}
+
+	.boot_rodata : {
+		* (.boot_rodata);
 	}
 
 	. = 0x7DFE;
