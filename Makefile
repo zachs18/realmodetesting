@@ -1,7 +1,7 @@
 #CFLAGS := -m16 -static -nostdlib -nostartfiles
 CFLAGS := -static -nostdlib -nostartfiles
 
-OBJECTS = entry.o keymap.o disk.o
+OBJECTS = entry.o keymap.o disk.o main.o
 
 .PHONY: default clean
 default: test.bin

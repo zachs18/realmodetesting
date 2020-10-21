@@ -17,4 +17,13 @@ SECTIONS {
 	.signature : {
 		SHORT(0xaa55);
 	}
+
+	.text16 : ALIGN(512) {
+		text16_start = .;
+		* (.text16);
+		* (.data16);
+		. = ALIGN(512);
+		data16_end = .;
+	}
+	text16_sectorcount = ABSOLUTE( ( data16_end - text16_start ) / 512);
 }

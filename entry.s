@@ -11,17 +11,17 @@ _start:
 	sti
 	xor	%ax,%ax
 	mov	%ax,%ds
-	mov	$msg,%si
+	mov	$boot_msg,%si
 //	add	$0x7c00,%si
-print_loop:
+.Lprint_loop:
 	lodsb
 	test	%al,%al
-	jz	end_print_loop
+	jz	.Lend_print_loop
 	mov	$0xE,%ah
 	int	$0x10
-	jmp	print_loop
+	jmp	.Lprint_loop
 
-end_print_loop:
+.Lend_print_loop:
 	xor	%eax,%eax
 	mov	$keyboard_handler,%ax
 //	add	$0x7c00,%ax
@@ -29,23 +29,31 @@ end_print_loop:
 	mov	%eax,0x24 # interrupt vector 9 offset
 	sti
 
-init_memory:
-	mov	$0x8000,%bx
-	mov	$2,%al
+	mov	$text16_sectorcount,%ax
+	call boot_print_uint16
+	call print_newline
+
+/Linit_memory:
+	mov	$text16_start,%bx
+	mov	$text16_sectorcount,%al
+	mov	$0x0002,%cx
+	mov	$0x0080,%dx
 	call	boot_disk_read
 
-end:
+	call main
+
+.Lend:
 	hlt
-	jmp	end
+	jmp	.Lend
 
 	.section ".boot_rodata","a"
-msg:
+boot_msg:
 	.string "Hello, World!\r\n"
 
 
 	.section ".boot_text", "a"
-	.globl	print_uint16
-print_uint16:
+	.globl	boot_print_uint16
+boot_print_uint16:
 	# takes unsigned short in %ax and prints it
 	# clobbers %dx, %cx
 	test %ax,%ax
@@ -101,7 +109,7 @@ keyboard_handler:
 	mov	$keymap,%bx
 	add	%ax,%bx
 	push	%bx
-	call	print_uint16
+	call	boot_print_uint16
 	call	print_newline
 	pop	%bx
 	movb	(%bx),%al
@@ -109,7 +117,7 @@ keyboard_handler:
 	# print integer value of ASCII code
 	xor	%ah,%ah
 	push	%ax
-	call	print_uint16
+	call	boot_print_uint16
 	call	print_newline
 	pop	%ax
 
