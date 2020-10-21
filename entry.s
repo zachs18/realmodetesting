@@ -28,7 +28,7 @@ end_print_loop:
 end:
 	jmp	end
 
-	.section ".rodata","a"
+	.section ".boot_rodata","a"
 msg:
 	.string "Hello, World!\r\n"
 

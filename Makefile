@@ -1,26 +1,20 @@
+#CFLAGS := -m16 -static -nostdlib -nostartfiles
+CFLAGS := -static -nostdlib -nostartfiles
+
+OBJECTS = entry.o keymap.o
 
 .PHONY: default clean
 default: test.bin
 clean:
 	rm -rf *.o *.bin
 
-OBJECTS = entry.o keymap.o
-
 .PRECIOUS: $(OBJECTS)
 
 %.o: %.s Makefile
-	gcc -m16 $< -static -nostartfiles -nostdlib -c -o $@
-
-
-#test.bin: $(OBJECTS) link.ld
-#	#objcopy -O binary $< $@
-#	#gcc -m16 $< -static -nostartfiles -nostdlib -Wl,--oformat=binary,-Ttext=0x7C00,-Tsignature=0x7DFE -o $@
-#	gcc -m16 $(filter-out %.ld,$^) -static -nostartfiles -nostdlib -Wl,--oformat=binary,-Tlink.ld -o $@
+	$(CC) $(CFLAGS) $< -c -o $@
 
 test.bin.o: $(OBJECTS) link.ld
-	#objcopy -O binary $< $@
-	#gcc -m16 $< -static -nostartfiles -nostdlib -Wl,--oformat=binary,-Ttext=0x7C00,-Tsignature=0x7DFE -o $@
-	gcc -m16 $(filter-out %.ld,$^) -static -nostartfiles -nostdlib -Wl,--build-id=none,-Tlink.ld -o $@
+	$(CC) $(CFLAGS) $(filter-out %.ld,$^) -Wl,--build-id=none,-Tlink.ld -o $@
 
 test.bin: test.bin.o
 	objcopy $< -O binary $@

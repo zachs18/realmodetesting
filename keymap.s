@@ -1,4 +1,4 @@
-	.section ".rodata", "a"
+	.section ".boot_rodata", "a"
 	.globl	keymap
 keymap:
 # http://inglorion.net/documents/tutorials/x86ostut/keyboard/us_keymap.inc
