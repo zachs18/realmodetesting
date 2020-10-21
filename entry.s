@@ -4,7 +4,11 @@
 	.code16
 	.globl	_start
 _start:
-	mov	$0x8000,%sp
+	cli
+	mov	$0x7000,%ax
+	mov	%ax,%ss
+	mov	$0xFFF0,%sp
+	sti
 	xor	%ax,%ax
 	mov	%ax,%ds
 	mov	$msg,%si
@@ -25,7 +29,13 @@ end_print_loop:
 	mov	%eax,0x24 # interrupt vector 9 offset
 	sti
 
+init_memory:
+	mov	$0x8000,%bx
+	mov	$2,%al
+	call	boot_disk_read
+
 end:
+	hlt
 	jmp	end
 
 	.section ".boot_rodata","a"
