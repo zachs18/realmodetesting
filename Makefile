@@ -22,3 +22,6 @@ test.bin: test.bin.o
 .PHONY: run
 run: test.bin
 	qemu-system-i386 -drive format=raw,file=test.bin
+.PHONY: rundebug
+rundebug: test.bin
+	qemu-system-i386 -S -s -drive format=raw,file=test.bin
