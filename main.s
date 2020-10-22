@@ -24,7 +24,7 @@ main:
 	hlt
 	hlt
 
-	mov	$0x0013,%ax # set video mode to mode 12 (640x480 16 colors)
+	mov	$0x0013,%ax # set video mode to mode 13h (320x200 256 colors)
 	int	$0x10
 
 	push	%es
@@ -48,7 +48,7 @@ main:
 
 .Lbegin:
 	xor	%di,%di
-	movzxb	color,%ax
+	mov	color,%ax
 	mov	$180,%dx
 	mov	$0,%cx
 	call	draw_uint16_hex
@@ -59,7 +59,7 @@ main:
 	xor	%cx,%cx # col
 .Lloop1:
 //	cmp	$256,%cx
-	mov	color,%al
+	mov	color,%ax
 	mov	%al,%es:(%di)
 	inc	%di
 	inc	%cx
@@ -196,19 +196,21 @@ draw_helper:
 
 install_kb_hdlr:
 	push	%eax
-	mov	$kb_hdlr,%eax
+	mov	$kb_hdlr_1,%eax
 	cli
 	mov	%eax,0x24 # interrupt vector 9
 	sti
 	pop	%eax
 	ret
 
-kb_hdlr:
+kb_hdlr_1:
 	data32 pusha
 
 	in	$0x60,%al
 	test	$0x80,%al
 	jnz	0f
+	cmp	$1,%al
+	je	.Lswitch_to_kb_hdlr2
 //	mov	%al,color
 	shlb	color
 	test	$1,%al
@@ -222,6 +224,72 @@ kb_hdlr:
 
 	data32 popa
 	iret
+.Lswitch_to_kb_hdlr2:
+	push	%eax
+	mov	$kb_hdlr_2,%eax
+	mov	%eax,0x24 # interrupt vector 9
+	mov	$0x2000,%ax
+	mov	%ax,color
+	pop	%eax
+	jmp	0b
+
+kb_hdlr_2:
+	data32 pusha
+
+	in	$0x60,%al
+	test	$0x80,%al
+	jnz	0f
+	cmp	$1,%al
+	je	.Lswitch_to_kb_hdlr1
+	cmp	$10,%al # scan codes for 1-9 are 2-10
+	ja	.Lharder
+	sub	$1,%al
+	jmp	.Lal_assigned
+.Lharder:
+	xor	%ah,%ah
+
+2:	cmp	$30,%al # scan code for a
+	jne	2f
+	mov	$0xa,%ah
+2:	cmp	$48,%al # scan code for b
+	jne	2f
+	mov	$0xb,%ah
+2:	cmp	$46,%al # scan code for c
+	jne	2f
+	mov	$0xc,%ah
+2:	cmp	$32,%al # scan code for d
+	jne	2f
+	mov	$0xd,%ah
+2:	cmp	$18,%al # scan code for e
+	jne	2f
+	mov	$0xe,%ah
+2:	cmp	$33,%al # scan code for f
+	jne	2f
+	mov	$0xf,%ah
+2:
+
+	mov	%ah,%al
+
+.Lal_assigned:
+//	mov	%al,color
+	shlb	$4,color
+	orb	%al,color
+0:
+	// EOI
+	mov	$0x61,%al
+	out	%al,$0x20
+
+	data32 popa
+	iret
+.Lswitch_to_kb_hdlr1:
+	push	%eax
+	mov	$kb_hdlr_1,%eax
+	mov	%eax,0x24 # interrupt vector 9
+	mov	$0x1000,%ax
+	mov	%ax,color
+	pop	%eax
+	jmp	0b
+
 
 simd_setup: # https://wiki.osdev.org/SSE#Adding_support
 	mov	%cr0,%eax
@@ -239,7 +307,7 @@ simd_setup: # https://wiki.osdev.org/SSE#Adding_support
 .LC0:
 	.string "This is printed from main running in RAM."
 color:
-	.byte 0
+	.word 0x1000
 
 	.section ".text16","a"
 	.globl	puts
