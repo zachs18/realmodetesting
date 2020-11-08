@@ -44,6 +44,11 @@ main:
 //	jnz	.Ltry_video
 */
 
+	mov	$.LC0,%ax
+	mov	$180,%dx
+	mov	$(6*9),%cx
+	call	draw_str
+
 	call install_kb_hdlr
 
 .Lbegin:
@@ -52,6 +57,21 @@ main:
 	mov	$180,%dx
 	mov	$0,%cx
 	call	draw_uint16_hex
+
+	add	$(6*5),%cx
+	mov	$'"',%ax
+	call	draw_char
+
+	add	$6,%cx
+	mov	color,%ax
+	call	draw_char
+
+	add	$6,%cx
+	mov	$'"',%ax
+	call	draw_char
+
+//	mov	$0x4F00
+
 
 	xor	%di,%di
 	xor	%dx,%dx # row
@@ -104,6 +124,61 @@ main:
 */
 	ret
 
+draw_str: # Assumes %es:0x0000 points to video memory
+/*
+	@param AX str
+	@param CX X
+	@param DX Y
+*/
+	data32 pusha
+
+	mov	%ax,%bx
+0:
+	mov	(%bx),%al
+	inc	%bx
+	test	%al,%al
+	jz	1f
+	call	draw_char
+	add	$6,%cx
+	jmp	0b
+1:
+
+	data32 popa
+	ret
+
+draw_char: # Assumes %es:0x0000 points to video memory
+/*
+	@param AL char
+	@param CX X
+	@param DX Y
+*/
+	data32 pusha
+
+	push	%ax
+// calculate %di
+//	%di = width*Y+X (320*%dx+%cx)
+	mov	%cx,%di
+//	%dx:%ax = %ax * 320
+	mov	%dx,%ax
+	mov	$320,%cx
+	mul	%cx
+//	now %dx:%ax = 320*width (which is at most 0xFA00, so %dx == 0)
+	add	%ax,%di
+//	now %di points to the top left corner of where we'll be placing
+	pop	%ax
+
+// calculate %si
+	mov	$(5*9),%cl
+	mul	%cl
+	mov	%ax,%bx
+	lea	char_000(%bx),%si
+
+	call	draw_helper
+
+	data32 popa
+	ret
+
+
 draw_uint16_hex: # Assumes %es:0x0000 points to video memory
 /*
 	@param AX value
@@ -150,16 +225,33 @@ draw_uint16_hex: # Assumes %es:0x0000 points to video memory
 
 //Stack now holds the digits as words in order to be drawn
 
+	mov	$2,%cl
+
 	pop	%ax
+	mul	%cl
+	mov	%ax,%bx
+	mov	digits(%bx),%si
 	call	draw_helper
+
 	add	$6,%di
 	pop	%ax
+	mul	%cl
+	mov	%ax,%bx
+	mov	digits(%bx),%si
 	call	draw_helper
+
 	add	$6,%di
 	pop	%ax
+	mul	%cl
+	mov	%ax,%bx
+	mov	digits(%bx),%si
 	call	draw_helper
+
 	add	$6,%di
 	pop	%ax
+	mul	%cl
+	mov	%ax,%bx
+	mov	digits(%bx),%si
 	call	draw_helper
 
 	data32 popa
@@ -167,18 +259,12 @@ draw_uint16_hex: # Assumes %es:0x0000 points to video memory
 
 draw_helper:
 //	%es:(%di) points to the top right corner of the current digit
-//	%al is the digit we are printing
-//	clobbers %ax, %bx, %edx, %si
-//	assumes %ds == 0
-	mov	$(5*9),%cl
-	mul	%cl
-	mov	%ax,%bx
-	mov	$digit0,%si
-//	now %ax is the byte index after digit0 we are looking for
+//	%ds:(%si) points to the 45-byte (5x9) character to draw
+//	clobbers %edx
 .macro row n
-	mov	%ds:(\n*5)(%bx,%si),%edx
+	mov	%ds:(\n*5)(%si),%edx
 	mov	%edx,%es:(\n*320)(%di)
-	mov	%ds:(\n*5+4)(%bx,%si),%dl
+	mov	%ds:(\n*5+4)(%si),%dl
 	mov	%dl,%es:(\n*320+4)(%di)
 .endm
 	ROW 0
@@ -338,164 +424,21 @@ puts:
 	ret
 
 	.section ".data16","a"
-digit0:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-digit1:
-	.byte  0, 0,15, 0, 0
-	.byte  0,15,15, 0, 0
-	.byte 15, 0,15, 0, 0
-	.byte  0, 0,15, 0, 0
-	.byte  0, 0,15, 0, 0
-	.byte  0, 0,15, 0, 0
-	.byte  0, 0,15, 0, 0
-	.byte  0, 0,15, 0, 0
-	.byte 15,15,15,15,15
-digit2:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0,15, 0
-	.byte  0, 0,15, 0, 0
-	.byte  0,15, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15,15,15,15,15
-digit3:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-digit4:
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15,15,15,15,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-digit5:
-	.byte 15,15,15,15,15
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15,15,15,15, 0
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-digit6:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-digit7:
-	.byte 15,15,15,15,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-digit8:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-digit9:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15,15
-	.byte  0, 0, 0, 0,15
-	.byte  0, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-digitA:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15,15,15,15,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-digitB:
-	.byte 15,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15,15,15,15, 0
-digitC:
-	.byte  0,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0,15
-	.byte  0,15,15,15, 0
-digitD:
-	.byte 15,15,15,15, 0
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15, 0, 0, 0,15
-	.byte 15,15,15,15, 0
-digitE:
-	.byte 15,15,15,15,15
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15,15,15,15, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15,15,15,15,15
-digitF:
-	.byte 15,15,15,15,15
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15,15,15,15, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
-	.byte 15, 0, 0, 0, 0
+digits:
+digit0:	.word	char_048
+digit1:	.word	char_049
+digit2:	.word	char_050
+digit3:	.word	char_051
+digit4:	.word	char_052
+digit5:	.word	char_053
+digit6:	.word	char_054
+digit7:	.word	char_055
+digit8:	.word	char_056
+digit9:	.word	char_057
+digitA:	.word	char_065
+digitB:	.word	char_066
+digitC:	.word	char_067
+digitD:	.word	char_068
+digitE:	.word	char_069
+digitF:	.word	char_070
 digitEnd:

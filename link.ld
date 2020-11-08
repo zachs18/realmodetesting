@@ -22,6 +22,7 @@ SECTIONS {
 		text16_start = .;
 		* (.text16);
 		* (.data16);
+		* (.font);
 		. = ALIGN(512);
 		data16_end = .;
 	}
