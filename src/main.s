@@ -2,7 +2,7 @@
 	.section ".text16","a"
 	.globl	main
 main:
-	call	simd_setup
+/*	call	simd_setup
 
 	xorps	%xmm0,%xmm0
 
@@ -23,33 +23,22 @@ main:
 	hlt
 	hlt
 	hlt
-
+*/
 	mov	$0x0013,%ax # set video mode to mode 13h (320x200 256 colors)
 	int	$0x10
 
 	push	%es
 	mov	$0xA000,%ax
 	mov	%ax,%es
-/*.Ltry_video:
-	xor	%di,%di
-	mov	$0x7D00,%cx
-	rep stosb
-	xor	$0x80,%al
-	mov	$0x7D00,%cx
-	rep stosb
-	xor	$0x80,%al
-	inc	%al
-	hlt
-	jmp	.Ltry_video
-//	jnz	.Ltry_video
-*/
 
 	mov	$.LC0,%ax
 	mov	$180,%dx
 	mov	$(6*9),%cx
 	call	draw_str
 
-	call install_kb_hdlr
+	lea	kb_handler_1,%ax
+	xor	%cx,%cx
+	call install_kb_handler
 
 .Lbegin:
 	xor	%di,%di
@@ -280,23 +269,21 @@ draw_helper:
 
 	ret
 
-install_kb_hdlr:
-	push	%eax
-	mov	$kb_hdlr_1,%eax
-	cli
-	mov	%eax,0x24 # interrupt vector 9
-	sti
-	pop	%eax
-	ret
-
-kb_hdlr_1:
+kb_handler_1:
 	data32 pusha
 
 	in	$0x60,%al
 	test	$0x80,%al
 	jnz	0f
 	cmp	$1,%al
-	je	.Lswitch_to_kb_hdlr2
+	jne	1f
+// switch to handler2
+	lea	kb_handler_2,%ax
+	xor	%cx,%cx
+	call	install_kb_handler
+	movw	$0x2000,color
+	jmp 0f
+1:
 //	mov	%al,color
 	shlb	color
 	test	$1,%al
@@ -310,23 +297,22 @@ kb_hdlr_1:
 
 	data32 popa
 	iret
-.Lswitch_to_kb_hdlr2:
-	push	%eax
-	mov	$kb_hdlr_2,%eax
-	mov	%eax,0x24 # interrupt vector 9
-	mov	$0x2000,%ax
-	mov	%ax,color
-	pop	%eax
-	jmp	0b
 
-kb_hdlr_2:
+kb_handler_2:
 	data32 pusha
 
 	in	$0x60,%al
 	test	$0x80,%al
 	jnz	0f
 	cmp	$1,%al
-	je	.Lswitch_to_kb_hdlr1
+	jne	1f
+// switch to kb_handler1
+	lea	kb_handler_1,%ax
+	xor	%cx,%cx
+	call	install_kb_handler
+	movw	$0x1000,color
+	jmp 0f
+1:
 	cmp	$10,%al # scan codes for 1-9 are 2-10
 	ja	.Lharder
 	sub	$1,%al
@@ -367,15 +353,6 @@ kb_hdlr_2:
 
 	data32 popa
 	iret
-.Lswitch_to_kb_hdlr1:
-	push	%eax
-	mov	$kb_hdlr_1,%eax
-	mov	%eax,0x24 # interrupt vector 9
-	mov	$0x1000,%ax
-	mov	%ax,color
-	pop	%eax
-	jmp	0b
-
 
 simd_setup: # https://wiki.osdev.org/SSE#Adding_support
 	mov	%cr0,%eax

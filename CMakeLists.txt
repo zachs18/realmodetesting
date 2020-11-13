@@ -5,6 +5,7 @@ set(SOURCES
 	src/entry.s
 	src/main.s
 	src/disk.s
+	src/kb.s
 #	src/font.s
 	${CMAKE_CURRENT_BINARY_DIR}/font.s
 	src/make_font_s.py

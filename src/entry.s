@@ -33,7 +33,7 @@ _start:
 	call boot_print_uint16
 	call print_newline
 
-/Linit_memory:
+.Linit_memory:
 	mov	$text16_start,%bx
 	mov	$text16_sectorcount,%al
 	mov	$0x0002,%cx
