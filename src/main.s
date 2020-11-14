@@ -2,50 +2,44 @@
 	.section ".text16","a"
 	.globl	main
 main:
-/*	call	simd_setup
+	call	simd_setup
 
 	xorps	%xmm0,%xmm0
 
-	mov	$.LC0,%si
-	call	puts
-
-	xor	%cx,%cx
-1:
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-	hlt
-*/
 	mov	$0x0013,%ax # set video mode to mode 13h (320x200 256 colors)
 	int	$0x10
 
 	push	%es
 	mov	$0xA000,%ax
-	mov	%ax,%es
+	mov	%ax,%es # set up video segment
+
+	call	menu
+	ud2
 
 	mov	$.LC0,%ax
 	mov	$180,%dx
 	mov	$(6*9),%cx
 	call	draw_str
 
-	lea	kb_handler_1,%ax
-	xor	%cx,%cx
+	lea	kb_handler_1,%eax
 	call install_kb_handler
 
 .Lbegin:
 	xor	%di,%di
-	mov	color,%ax
-	mov	$180,%dx
+	pushw	color
+
+	xor	%esi,%esi
+	mov	%ss,%si
+	shl	$4,%esi
+	xor	%ecx,%ecx
+	mov	%sp,%cx
+	add	%ecx,%esi # lea %ss:(%sp),%esi (lea ignores segment overrides)
+
+	mov	$2,%ax
 	mov	$0,%cx
-	call	draw_uint16_hex
+	mov	$180,%dx
+	call	draw_bytes_hex
+	add	$2,%sp
 
 	add	$(6*5),%cx
 	mov	$'"',%ax
@@ -113,162 +107,6 @@ main:
 */
 	ret
 
-draw_str: # Assumes %es:0x0000 points to video memory
-/*
-	@param AX str
-	@param CX X
-	@param DX Y
-*/
-	data32 pusha
-
-	mov	%ax,%bx
-0:
-	mov	(%bx),%al
-	inc	%bx
-	test	%al,%al
-	jz	1f
-	call	draw_char
-	add	$6,%cx
-	jmp	0b
-1:
-
-	data32 popa
-	ret
-
-draw_char: # Assumes %es:0x0000 points to video memory
-/*
-	@param AL char
-	@param CX X
-	@param DX Y
-*/
-	data32 pusha
-
-	push	%ax
-// calculate %di
-//	%di = width*Y+X (320*%dx+%cx)
-	mov	%cx,%di
-//	%dx:%ax = %ax * 320
-	mov	%dx,%ax
-	mov	$320,%cx
-	mul	%cx
-//	now %dx:%ax = 320*width (which is at most 0xFA00, so %dx == 0)
-	add	%ax,%di
-//	now %di points to the top left corner of where we'll be placing
-	pop	%ax
-
-// calculate %si
-	mov	$(5*9),%cl
-	mul	%cl
-	mov	%ax,%bx
-	lea	char_000(%bx),%si
-
-	call	draw_helper
-
-	data32 popa
-	ret
-
-
-draw_uint16_hex: # Assumes %es:0x0000 points to video memory
-/*
-	@param AX value
-	@param CX X
-	@param DX Y
-*/
-
-	data32 pusha
-
-	push	%ax
-
-//	%di = width*Y+X (320*%dx+%cx)
-	mov	%cx,%di
-//	%dx:%ax = %ax * 320
-	mov	%dx,%ax
-	mov	$320,%cx
-	mul	%cx
-//	now %dx:%ax = 320*width (which is at most 0xFA00, so %dx == 0)
-	add	%ax,%di
-
-//	now %di points to the top left corner of where we'll be placing
-
-	pop	%ax
-
-	mov	%ax,%cx
-	and	$0x000f,%cx
-	push	%cx
-	shr	$4,%ax
-
-	mov	%ax,%cx
-	and	$0x000f,%cx
-	push	%cx
-	shr	$4,%ax
-
-	mov	%ax,%cx
-	and	$0x000f,%cx
-	push	%cx
-	shr	$4,%ax
-
-	mov	%ax,%cx
-	and	$0x000f,%cx
-	push	%cx
-	shr	$4,%ax
-
-//Stack now holds the digits as words in order to be drawn
-
-	mov	$2,%cl
-
-	pop	%ax
-	mul	%cl
-	mov	%ax,%bx
-	mov	digits(%bx),%si
-	call	draw_helper
-
-	add	$6,%di
-	pop	%ax
-	mul	%cl
-	mov	%ax,%bx
-	mov	digits(%bx),%si
-	call	draw_helper
-
-	add	$6,%di
-	pop	%ax
-	mul	%cl
-	mov	%ax,%bx
-	mov	digits(%bx),%si
-	call	draw_helper
-
-	add	$6,%di
-	pop	%ax
-	mul	%cl
-	mov	%ax,%bx
-	mov	digits(%bx),%si
-	call	draw_helper
-
-	data32 popa
-	ret
-
-draw_helper:
-//	%es:(%di) points to the top right corner of the current digit
-//	%ds:(%si) points to the 45-byte (5x9) character to draw
-//	clobbers %edx
-.macro row n
-	mov	%ds:(\n*5)(%si),%edx
-	mov	%edx,%es:(\n*320)(%di)
-	mov	%ds:(\n*5+4)(%si),%dl
-	mov	%dl,%es:(\n*320+4)(%di)
-.endm
-	ROW 0
-	ROW 1
-	ROW 2
-	ROW 3
-	ROW 4
-	ROW 5
-	ROW 6
-	ROW 7
-	ROW 8
-
-
-	ret
-
 kb_handler_1:
 	data32 pusha
 
@@ -278,8 +116,7 @@ kb_handler_1:
 	cmp	$1,%al
 	jne	1f
 // switch to handler2
-	lea	kb_handler_2,%ax
-	xor	%cx,%cx
+	lea	kb_handler_2,%eax
 	call	install_kb_handler
 	movw	$0x2000,color
 	jmp 0f
@@ -307,8 +144,7 @@ kb_handler_2:
 	cmp	$1,%al
 	jne	1f
 // switch to kb_handler1
-	lea	kb_handler_1,%ax
-	xor	%cx,%cx
+	lea	kb_handler_1,%eax
 	call	install_kb_handler
 	movw	$0x1000,color
 	jmp 0f

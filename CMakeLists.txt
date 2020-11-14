@@ -6,22 +6,30 @@ set(SOURCES
 	src/main.s
 	src/disk.s
 	src/kb.s
+	src/draw.s
+	src/menu.s
+	src/progs/hex_color_prog.s
+	src/progs/type_prog.s
+	src/progs/print_keycode_prog.s
 #	src/font.s
 	${CMAKE_CURRENT_BINARY_DIR}/font.s
 	src/make_font_s.py
 	src/keymap.s
-	link.ld
 )
+
+add_executable(test1.o ${SOURCES} link-obj.ld)
+set_target_properties(test1.o PROPERTIES LINKER_LANGUAGE C)
+target_link_options(test1.o PRIVATE -T${CMAKE_SOURCE_DIR}/link-obj.ld)
 
 add_executable(test1 ${SOURCES} link.ld)
 set_target_properties(test1 PROPERTIES LINKER_LANGUAGE C)
-#add_dependencies(test1 link.ld)
+target_link_options(test1 PRIVATE -T${CMAKE_SOURCE_DIR}/link.ld)
 
 set(OS BAREMETAL)
 
 set(CMAKE_BUILD_TYPE DEBUG)
 
-set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} --build-id=none -T ${CMAKE_SOURCE_DIR}/link.ld")
+#set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} --build-id=none -T ${CMAKE_SOURCE_DIR}/link.ld")
 #set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_LINKER> <FLAGS> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 
 #set(CMAKE_C_COMPILER /usr/bin/gcc-10)
@@ -29,7 +37,8 @@ set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} --build-id=none -T ${CMAKE_SOURCE_
 
 #set(CMAKE_CXX_FLAGS_DEBUG "-Wall --std=c++20 -O0 -ggdb -DYYDEBUG -fdiagnostics-color=always")
 #set(CMAKE_C_FLAGS_DEBUG "-Wall --std=c++20 -O0 -ggdb -fdiagnostics-color=always ")
-set(CMAKE_C_FLAGS_DEBUG "-static -nostdlib -nostartfiles -Wl,--build-id=none,-T ${CMAKE_SOURCE_DIR}/link.ld")
+set(CMAKE_C_FLAGS_DEBUG "-m32 -g -static -nostdlib -nostartfiles -Wl,--build-id=none -Wa,--keep-locals")
+set(CMAKE_ASM_FLAGS_DEBUG "-m32 -g -static -nostdlib -nostartfiles -Wl,--build-id=none -Wa,--keep-locals")
 
 #set(CMAKE_CXX_FLAGS_RELEASE "-Wall --std=c++20 -O2")
 #set(CMAKE_CXX_FLAGS_RELEASE "-Wall --std=c++20 -O2")
@@ -49,7 +58,8 @@ add_custom_target(rundebug
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_custom_target(link.ld DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/link.ld)
+#add_custom_target(link.ld DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/link.ld)
+#add_custom_target(link.ld DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/link.ld)
 
 add_custom_command(
 	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/font.s
